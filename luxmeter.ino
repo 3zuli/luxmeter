@@ -9,7 +9,7 @@
 
 // Hardware SPI (faster, but must use certain hardware pins):
 // pin 13 on Arduino (SCK) - LCD serial clock (SCLK) 
-// pin 11 on an Arduino (MOSI) - LCD data in (DIN)
+// pin 11 on Arduino (MOSI) - LCD data in (DIN)
 // pin 5 - LCD Data/Command select (D/C)
 // pin 4 - LCD chip select (CS)
 // pin 3 - LCD reset (RST)
@@ -35,11 +35,12 @@ uint16_t graphMin=65535, graphMax=0;
 int numScreens = 2;
 volatile int screenMode = 0;
 void changeScreen(){
-    Serial.print("Change screen from ");
-    Serial.print(screenMode);
+    // Uncomment these Serial.print lines to enable debug information
+    //Serial.print("Change screen from ");
+    //Serial.print(screenMode);
     screenMode = ++screenMode%numScreens;
-    Serial.print(" to ");
-    Serial.println(screenMode);
+    //Serial.print(" to ");
+    //Serial.println(screenMode);
 }
 
 void testContrast(){
@@ -47,6 +48,7 @@ void testContrast(){
     display.setTextSize(2);
     display.setTextColor(BLACK);
     while(true){
+        if(digitalRead(2)) continue; // Stop if button is not pressed
         display.clearDisplay();
         display.setContrast(c);
         display.setCursor(0,16);
@@ -63,24 +65,27 @@ void testContrast(){
 void setup() {
   screenMode = 0;
   pinMode(9,OUTPUT);
+  pinMode(13, OUTPUT);
+  pinMode(2,INPUT_PULLUP);
   
   Serial.begin(57600);
   lightMeter.begin(BH1750_CONTINUOUS_HIGH_RES_MODE_2);
 
   display.begin();
-  display.setContrast(50);
+  display.setContrast(55);
 
   // Contrast value of 50 works fine for me. If your LCD is badly readable,
   // or doesn't show anything at all, uncomment the following line to go into 
   // Contrast Test mode and see, which value works best for you
-  // Then change display.setContrast(50) to that value
+  // Hold down the button to change contrast
+  // Then change display.setContrast(55) to that value
   //testContrast();
   
-  pinMode(2,INPUT_PULLUP);
   attachInterrupt(0,changeScreen,FALLING);
 }
 
 void loop() {
+  digitalWrite(13,HIGH);
   // Get lux reading from HB1750
   uint16_t lux = lightMeter.readLightLevel();
   Serial.print("Light: ");
@@ -133,6 +138,7 @@ void loop() {
               /*display.drawLine(x, 38-int(map(graphBuff[x-1], graphMin,graphMax, 0,38)),
                                x+1, 38-int(map(graphBuff[x], graphMin,graphMax, 0,38)), BLACK);*/
               if(x==1){
+                  // Avoid drawing a line from the end to the beginning of graph
                   display.drawLine(x, 38-int(map(graphBuff[(buffIndex+x)%BUFF_LENGTH], graphMin,graphMax, 0,38)),
                                    x+1, 38-int(map(graphBuff[(buffIndex+x)%BUFF_LENGTH], graphMin,graphMax, 0,38)), BLACK);
               }
@@ -151,5 +157,6 @@ void loop() {
           display.display();
       break;      
   }
+  digitalWrite(13,LOW);
   delay(250);
 }
